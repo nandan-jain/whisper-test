@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Services App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #4285F4;
+            margin-top: 0;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin-bottom: 10px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #3367D6;
+        }
+        .button-red {
+            background-color: #EA4335;
+        }
+        .button-red:hover {
+            background-color: #D33426;
+        }
+        .button-green {
+            background-color: #34A853;
+        }
+        .button-green:hover {
+            background-color: #2E9549;
+        }
+        .media-container {
+            margin-top: 20px;
+        }
+        audio {
+            width: 100%;
+        }
+        .hidden {
+            display: none;
+        }
+        .result-box {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .record-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        #recordingStatus {
+            display: inline-block;
+            margin-left: 15px;
+            font-style: italic;
+            color: #666;
+        }
+        .file-input {
+            margin-bottom: 15px;
+        }
+        #dropArea {
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+            cursor: pointer;
+        }
+        #dropArea.highlight {
+            border-color: #4285F4;
+            background-color: #e8f0fe;
+        }
+    </style>
+</head>
+<body>
+    <h1>Speech Services App</h1>
+    
+    <!-- Text-to-Speech Section -->
+    <div class="section">
+        <h2>Text-to-Speech</h2>
+        <form id="ttsForm">
+            <textarea id="textInput" placeholder="Enter text to convert to speech..."></textarea>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="languageSelect">Language:</label>
+                    <select id="languageSelect">
+                        <option value="en-US">English (US)</option>
+                        <option value="en-GB">English (UK)</option>
+                        <option value="es-ES">Spanish</option>
+                        <option value="fr-FR">French</option>
+                        <option value="de-DE">German</option>
+                        <option value="ja-JP">Japanese</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="voiceSelect">Voice:</label>
+                    <select id="voiceSelect">
+                        <option value="en-US-Standard-B">Male (Standard)</option>
+                        <option value="en-US-Standard-C">Female (Standard)</option>
+                        <option value="en-US-Wavenet-B">Male (WaveNet)</option>
+                        <option value="en-US-Wavenet-C">Female (WaveNet)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="rateInput">Speaking Rate (0.25-4.0):</label>
+                    <input type="number" id="rateInput" min="0.25" max="4.0" step="0.25" value="1.0">
+                </div>
+                
+                <div class="control-group">
+                    <label for="pitchInput">Pitch (-20 to 20):</label>
+                    <input type="number" id="pitchInput" min="-20" max="20" step="1" value="0">
+                </div>
+            </div>
+            
+            <button type="submit">Generate Speech</button>
+            
+            <div class="media-container">
+                <audio id="audioPlayer" controls class="hidden"></audio>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Speech-to-Text Section - Microphone -->
+    <div class="section">
+        <h2>Speech-to-Text (Microphone)</h2>
+        <p>Use your microphone to record speech and convert it to text.</p>
+        
+        <div class="record-controls">
+            <button id="startRecording" class="button-red">Start Recording</button>
+            <button id="stopRecording" class="button-green hidden">Stop Recording</button>
+            <span id="recordingStatus"></span>
+        </div>
+        
+        <div class="result-box hidden" id="micTranscriptionResult">
+            <h3>Transcription:</h3>
+            <p id="micTranscriptionText"></p>
+        </div>
+        
+        <div class="media-container">
+            <audio id="recordedAudio" controls class="hidden"></audio>
+        </div>
+    </div>
+    
+    <!-- Speech-to-Text Section - File Upload -->
+    <div class="section">
+        <h2>Speech-to-Text (File Upload)</h2>
+        <p>Upload an audio file to convert speech to text.</p>
+        
+        <div id="dropArea">
+            <p>Drag & drop an audio file here, or click to select file</p>
+            <input type="file" id="fileInput" accept="audio/*" class="hidden">
+        </div>
+        
+        <div class="result-box hidden" id="fileTranscriptionResult">
+            <h3>Transcription:</h3>
+            <p id="fileTranscriptionText"></p>
+        </div>
+        
+        <div class="media-container">
+            <audio id="uploadedAudio" controls class="hidden"></audio>
+        </div>
+    </div>
+    
+    <script>
+        // Load available voices based on language selection
+        const voicesByLanguage = {
+            'en-US': [
+                { value: 'en-US-Standard-B', text: 'Male (Standard)' },
+                { value: 'en-US-Standard-C', text: 'Female (Standard)' },
+                { value: 'en-US-Wavenet-B', text: 'Male (WaveNet)' },
+                { value: 'en-US-Wavenet-C', text: 'Female (WaveNet)' }
+            ],
+            'en-GB': [
+                { value: 'en-GB-Standard-B', text: 'Male (Standard)' },
+                { value: 'en-GB-Standard-C', text: 'Female (Standard)' },
+                { value: 'en-GB-Wavenet-B', text: 'Male (WaveNet)' },
+                { value: 'en-GB-Wavenet-C', text: 'Female (WaveNet)' }
+            ],
+            'es-ES': [
+                { value: 'es-ES-Standard-B', text: 'Male (Standard)' },
+                { value: 'es-ES-Standard-C', text: 'Female (Standard)' }
+            ],
+            'fr-FR': [
+                { value: 'fr-FR-Standard-B', text: 'Male (Standard)' },
+                { value: 'fr-FR-Standard-C', text: 'Female (Standard)' }
+            ],
+            'de-DE': [
+                { value: 'de-DE-Standard-B', text: 'Male (Standard)' },
+                { value: 'de-DE-Standard-C', text: 'Female (Standard)' }
+            ],
+            'ja-JP': [
+                { value: 'ja-JP-Standard-B', text: 'Male (Standard)' },
+                { value: 'ja-JP-Standard-C', text: 'Female (Standard)' }
+            ]
+        };
+        
+        // Text-to-Speech functionality
+        const languageSelect = document.getElementById('languageSelect');
+        const voiceSelect = document.getElementById('voiceSelect');
+        
+        // Update voices when language changes
+        languageSelect.addEventListener('change', function() {
+            const selectedLanguage = this.value;
+            const voices = voicesByLanguage[selectedLanguage] || [];
+            
+            voiceSelect.innerHTML = '';
+            voices.forEach(voice => {
+                const option = document.createElement('option');
+                option.value = voice.value;
+                option.textContent = voice.text;
+                voiceSelect.appendChild(option);
+            });
+        });
+        
+        // TTS Form submission
+        document.getElementById('ttsForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            
+            const text = document.getElementById('textInput').value;
+            const language = document.getElementById('languageSelect').value;
+            const voice = document.getElementById('voiceSelect').value;
+            const rate = document.getElementById('rateInput').value;
+            const pitch = document.getElementById('pitchInput').value;
+            
+            if (!text) {
+                alert('Please enter some text to convert to speech.');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('text', text);
+            formData.append('language', language);
+            formData.append('voice', voice);
+            formData.append('rate', rate);
+            formData.append('pitch', pitch);
+            
+            try {
+                const response = await fetch('/synthesize', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    // Show and play the audio
+                    const audioPlayer = document.getElementById('audioPlayer');
+                    audioPlayer.src = data.audio_path;
+                    audioPlayer.classList.remove('hidden');
+                    audioPlayer.play();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while generating speech.');
+            }
+        });
+        
+        // Speech-to-Text functionality - Microphone Recording
+        let mediaRecorder;
+        let audioChunks = [];
+        const startRecordingButton = document.getElementById('startRecording');
+        const stopRecordingButton = document.getElementById('stopRecording');
+        const recordingStatus = document.getElementById('recordingStatus');
+        const recordedAudio = document.getElementById('recordedAudio');
+        const micTranscriptionResult = document.getElementById('micTranscriptionResult');
+        const micTranscriptionText = document.getElementById('micTranscriptionText');
+        
+        startRecordingButton.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                // Update UI
+                startRecordingButton.classList.add('hidden');
+                stopRecordingButton.classList.remove('hidden');
+                recordingStatus.textContent = 'Recording...';
+                
+                // Create media recorder
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                // Event handlers
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    // Create audio blob
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    
+                    // Show audio player
+                    recordedAudio.src = audioUrl;
+                    recordedAudio.classList.remove('hidden');
+                    
+                    // Update UI
+                    recordingStatus.textContent = 'Processing audio...';
+                    
+                    // Send to server for transcription
+                    const formData = new FormData();
+                    formData.append('audio_data', audioBlob);
+                    
+                    try {
+                        const response = await fetch('/transcribe-mic', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        const data = await response.json();
+                        
+                        // Display transcription result
+                        if (data.error) {
+                            alert('Error: ' + data.error);
+                        } else {
+                            micTranscriptionText.textContent = data.text;
+                            micTranscriptionResult.classList.remove('hidden');
+                            recordingStatus.textContent = '';
+                        }
+                    } catch (error) {
+                        console.error('Transcription error:', error);
+                        alert('An error occurred during transcription.');
+                        recordingStatus.textContent = '';
+                    }
+                };
+                
+                // Start recording
+                mediaRecorder.start();
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                alert('Error accessing microphone. Please make sure you have granted permission.');
+            }
+        });
+        
+        stopRecordingButton.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                
+                // Stop all tracks in the stream
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                
+                // Update UI
+                startRecordingButton.classList.remove('hidden');
+                stopRecordingButton.classList.add('hidden');
+                recordingStatus.textContent = 'Processing...';
+            }
+        });
+        
+        // Speech-to-Text functionality - File Upload
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileTranscriptionResult = document.getElementById('fileTranscriptionResult');
+        const fileTranscriptionText = document.getElementById('fileTranscriptionText');
+        const uploadedAudio = document.getElementById('uploadedAudio');
+        
+        // Prevent default behavior for drag events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        // Highlight drop area when dragging over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropArea.classList.add('highlight');
+        }
+        
+        function unhighlight() {
+            dropArea.classList.remove('highlight');
+        }
+        
+        // Handle dropped files
+        dropArea.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                processAudioFile(files[0]);
+            }
+        }
+        
+        // Handle file selection via file input
+        dropArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                processAudioFile(this.files[0]);
+            }
+        });
+        
+        async function processAudioFile(file) {
+            // Check if it's an audio file
+            if (!file.type.startsWith('audio/')) {
+                alert('Please select an audio file.');
+                return;
+            }
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('audio', file);
+            
+            // Show audio player
+            const audioUrl = URL.createObjectURL(file);
+            uploadedAudio.src = audioUrl;
+            uploadedAudio.classList.remove('hidden');
+            
+            // Show loading state
+            dropArea.textContent = 'Processing audio...';
+            
+            try {
+                // Send to server for transcription
+                const response = await fetch('/transcribe', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                // Display transcription result
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    fileTranscriptionText.textContent = data.text;
+                    fileTranscriptionResult.classList.remove('hidden');
+                }
+                
+                // Reset drop area
+                dropArea.innerHTML = '<p>Drag & drop an audio file here, or click to select file</p>';
+                dropArea.appendChild(fileInput);
+            } catch (error) {
+                console.error('Transcription error:', error);
+                alert('An error occurred during transcription.');
+                
+                // Reset drop area
+                dropArea.innerHTML = '<p>Drag & drop an audio file here, or click to select file</p>';
+                dropArea.appendChild(fileInput);
+            }
+        }
+    </script>
+</body>
+</html>
