@@ -113,40 +113,6 @@ def transcribe_speech():
         }
     except Exception as e:
         return {"error": str(e)}, 500
-    finally:
-        # Clean up the file if needed
-        # If you want to keep the files, comment this out
-        # os.remove(filepath)
-        pass
-
-@app.route('/transcribe-mic', methods=['POST'])
-def transcribe_microphone():
-    """Transcribes speech from microphone audio blob using Whisper."""
-    if 'audio_data' not in request.files:
-        return {"error": "No audio data provided"}, 400
-    
-    audio_file = request.files['audio_data']
-    
-    # Create a temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as temp_file:
-        temp_path = temp_file.name
-        audio_file.save(temp_path)
-    
-    try:
-        # Get the Whisper model
-        model = get_whisper_model()
-        
-        # Transcribe the audio file
-        result = model.transcribe(temp_path)
-        
-        # Return the transcription
-        return {"text": result["text"]}
-    except Exception as e:
-        return {"error": str(e)}, 500
-    finally:
-        # Clean up the temporary file
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
 
 @app.route('/static/audio/<filename>')
 def serve_audio(filename):

@@ -94,17 +94,6 @@
             border: 1px solid #ddd;
             border-radius: 4px;
         }
-        .record-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        #recordingStatus {
-            display: inline-block;
-            margin-left: 15px;
-            font-style: italic;
-            color: #666;
-        }
         .file-input {
             margin-bottom: 15px;
         }
@@ -172,27 +161,6 @@
                 <audio id="audioPlayer" controls class="hidden"></audio>
             </div>
         </form>
-    </div>
-    
-    <!-- Speech-to-Text Section - Microphone -->
-    <div class="section">
-        <h2>Speech-to-Text (Microphone)</h2>
-        <p>Use your microphone to record speech and convert it to text.</p>
-        
-        <div class="record-controls">
-            <button id="startRecording" class="button-red">Start Recording</button>
-            <button id="stopRecording" class="button-green hidden">Stop Recording</button>
-            <span id="recordingStatus"></span>
-        </div>
-        
-        <div class="result-box hidden" id="micTranscriptionResult">
-            <h3>Transcription:</h3>
-            <p id="micTranscriptionText"></p>
-        </div>
-        
-        <div class="media-container">
-            <audio id="recordedAudio" controls class="hidden"></audio>
-        </div>
     </div>
     
     <!-- Speech-to-Text Section - File Upload -->
@@ -308,95 +276,6 @@
             } catch (error) {
                 console.error('Error:', error);
                 alert('An error occurred while generating speech.');
-            }
-        });
-        
-        // Speech-to-Text functionality - Microphone Recording
-        let mediaRecorder;
-        let audioChunks = [];
-        const startRecordingButton = document.getElementById('startRecording');
-        const stopRecordingButton = document.getElementById('stopRecording');
-        const recordingStatus = document.getElementById('recordingStatus');
-        const recordedAudio = document.getElementById('recordedAudio');
-        const micTranscriptionResult = document.getElementById('micTranscriptionResult');
-        const micTranscriptionText = document.getElementById('micTranscriptionText');
-        
-        startRecordingButton.addEventListener('click', async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                
-                // Update UI
-                startRecordingButton.classList.add('hidden');
-                stopRecordingButton.classList.remove('hidden');
-                recordingStatus.textContent = 'Recording...';
-                
-                // Create media recorder
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-                
-                // Event handlers
-                mediaRecorder.ondataavailable = (event) => {
-                    audioChunks.push(event.data);
-                };
-                
-                mediaRecorder.onstop = async () => {
-                    // Create audio blob
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const audioUrl = URL.createObjectURL(audioBlob);
-                    
-                    // Show audio player
-                    recordedAudio.src = audioUrl;
-                    recordedAudio.classList.remove('hidden');
-                    
-                    // Update UI
-                    recordingStatus.textContent = 'Processing audio...';
-                    
-                    // Send to server for transcription
-                    const formData = new FormData();
-                    formData.append('audio_data', audioBlob);
-                    
-                    try {
-                        const response = await fetch('/transcribe-mic', {
-                            method: 'POST',
-                            body: formData
-                        });
-                        
-                        const data = await response.json();
-                        
-                        // Display transcription result
-                        if (data.error) {
-                            alert('Error: ' + data.error);
-                        } else {
-                            micTranscriptionText.textContent = data.text;
-                            micTranscriptionResult.classList.remove('hidden');
-                            recordingStatus.textContent = '';
-                        }
-                    } catch (error) {
-                        console.error('Transcription error:', error);
-                        alert('An error occurred during transcription.');
-                        recordingStatus.textContent = '';
-                    }
-                };
-                
-                // Start recording
-                mediaRecorder.start();
-            } catch (error) {
-                console.error('Error accessing microphone:', error);
-                alert('Error accessing microphone. Please make sure you have granted permission.');
-            }
-        });
-        
-        stopRecordingButton.addEventListener('click', () => {
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-                
-                // Stop all tracks in the stream
-                mediaRecorder.stream.getTracks().forEach(track => track.stop());
-                
-                // Update UI
-                startRecordingButton.classList.remove('hidden');
-                stopRecordingButton.classList.add('hidden');
-                recordingStatus.textContent = 'Processing...';
             }
         });
         
