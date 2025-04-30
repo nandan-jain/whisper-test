@@ -1,15 +1,19 @@
-from flask import Flask, request, render_template, send_from_directory, jsonify
+from flask import Flask, request, render_template, send_from_directory
 from google.cloud import texttospeech
 import os
 import whisper
 from dotenv import load_dotenv
 import uuid
-import tempfile
+import logging
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Configure folders for audio files
 AUDIO_FOLDER = os.path.join('static', 'audio')
@@ -22,6 +26,9 @@ for folder in [AUDIO_FOLDER, UPLOAD_FOLDER]:
 app.config['AUDIO_FOLDER'] = AUDIO_FOLDER
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
+
+# Path to service account file (in the same directory as app.py)
+SERVICE_ACCOUNT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "career-engine-453114-89f27bc7663b.json")
 
 # Load Whisper model
 whisper_model = None
@@ -44,41 +51,49 @@ def synthesize_text():
     if not text:
         return {"error": "No text provided"}, 400
     
-    # Instantiate a client
-    client = texttospeech.TextToSpeechClient()
+    try:
+        # Instantiate a client with explicit credentials
+        client = texttospeech.TextToSpeechClient.from_service_account_json(SERVICE_ACCOUNT_FILE)
+        
+        # Set the text input to be synthesized
+        synthesis_input = texttospeech.SynthesisInput(text=text)
+        
+        # Build the voice request
+        voice = texttospeech.VoiceSelectionParams(
+            language_code=request.form.get('language', 'en-US'),
+            name=request.form.get('voice', 'en-US-Standard-B'),
+            ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
+        )
+        
+        # Select the type of audio file you want
+        audio_config = texttospeech.AudioConfig(
+            audio_encoding=texttospeech.AudioEncoding.MP3,
+            speaking_rate=float(request.form.get('rate', 1.0)),
+            pitch=float(request.form.get('pitch', 0.0))
+        )
+        
+        # Perform the text-to-speech request
+        response = client.synthesize_speech(
+            input=synthesis_input, voice=voice, audio_config=audio_config
+        )
+        
+        # Generate a unique filename
+        filename = f"{uuid.uuid4()}.mp3"
+        filepath = os.path.join(app.config['AUDIO_FOLDER'], filename)
+        
+        # Save the audio content to a file
+        with open(filepath, 'wb') as out:
+            out.write(response.audio_content)
+        
+        # Return the path to the audio file
+        return {"audio_path": os.path.join('static', 'audio', filename)}
     
-    # Set the text input to be synthesized
-    synthesis_input = texttospeech.SynthesisInput(text=text)
-    
-    # Build the voice request
-    voice = texttospeech.VoiceSelectionParams(
-        language_code=request.form.get('language', 'en-US'),
-        name=request.form.get('voice', 'en-US-Standard-B'),
-        ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
-    )
-    
-    # Select the type of audio file you want
-    audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.MP3,
-        speaking_rate=float(request.form.get('rate', 1.0)),
-        pitch=float(request.form.get('pitch', 0.0))
-    )
-    
-    # Perform the text-to-speech request
-    response = client.synthesize_speech(
-        input=synthesis_input, voice=voice, audio_config=audio_config
-    )
-    
-    # Generate a unique filename
-    filename = f"{uuid.uuid4()}.mp3"
-    filepath = os.path.join(app.config['AUDIO_FOLDER'], filename)
-    
-    # Save the audio content to a file
-    with open(filepath, 'wb') as out:
-        out.write(response.audio_content)
-    
-    # Return the path to the audio file
-    return {"audio_path": os.path.join('static', 'audio', filename)}
+    except FileNotFoundError:
+        logger.error(f"Service account file not found at: {SERVICE_ACCOUNT_FILE}")
+        return {"error": "Google Cloud service account file not found. Please check the file path."}, 500
+    except Exception as e:
+        logger.error(f"Text-to-speech error: {str(e)}")
+        return {"error": f"Text-to-speech error: {str(e)}"}, 500
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe_speech():
@@ -112,6 +127,7 @@ def transcribe_speech():
             "audio_path": os.path.join('static', 'uploads', filename)
         }
     except Exception as e:
+        logger.error(f"Transcription error: {str(e)}")
         return {"error": str(e)}, 500
 
 @app.route('/static/audio/<filename>')
@@ -123,4 +139,12 @@ def serve_upload(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == '__main__':
+    # Check if service account file exists
+    if not os.path.isfile(SERVICE_ACCOUNT_FILE):
+        logger.warning(f"Google Cloud service account file not found at: {SERVICE_ACCOUNT_FILE}")
+        logger.warning("Please make sure to place your service account JSON file in the same directory as app.py")
+        logger.warning("Text-to-Speech functionality will not work without valid credentials")
+    else:
+        logger.info(f"Found Google Cloud service account file at: {SERVICE_ACCOUNT_FILE}")
+    
     app.run(debug=True)
