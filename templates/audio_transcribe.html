@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Transcription</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .container {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .transcription {
+            background-color: white;
+            padding: 15px;
+            border-left: 4px solid #007bff;
+            margin: 20px 0;
+        }
+        .audio-player {
+            margin: 20px 0;
+        }
+        .message {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .error-message {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #007bff;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Audio Transcription</h1>
+        
+        {% if error %}
+        <!-- Error state -->
+        <div class="error-message">
+            <p><strong>Error occurred:</strong> {{ error }}</p>
+        </div>
+        {% elif not has_audio %}
+        <!-- No audio file found -->
+        <div class="message">
+            <p>Audio file not found.</p>
+            <p>Please make sure the correct audio file is placed next to app.py.</p>
+        </div>
+        {% else %}
+        <!-- Successfully transcribed audio -->
+        <div class="file-info">
+            <p><strong>File:</strong> {{ filename }}</p>
+        </div>
+
+        <div class="audio-player">
+            <audio controls>
+                <source src="{{ audio_path }}" type="audio/mpeg">
+                Your browser does not support the audio element.
+            </audio>
+        </div>
+
+        <h2>Transcription</h2>
+        <div class="transcription">
+            <p>{{ text }}</p>
+        </div>
+        {% endif %}
+
+        <a href="/" class="back-link">← Back to Home</a>
+    </div>
+</body>
+</html>

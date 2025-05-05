@@ -130,6 +130,57 @@ def transcribe_speech():
         logger.error(f"Transcription error: {str(e)}")
         return {"error": str(e)}, 500
 
+
+@app.route('/transcribe-audio', methods=['GET'])
+def transcribe_audio():
+    """
+    Transcribes a specific audio file located next to app.py
+    and returns the text as HTML.
+    """
+    # Initialize context dictionary for template
+    context = {
+        'has_audio': False,
+        'error': None,
+        'text': None,
+        'filename': None,
+        'audio_path': None
+    }
+    
+    audio_filename = "recording.m4a"  
+    
+    try:
+        # Get the directory where app.py is located
+        app_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Full path to the audio file
+        filepath = os.path.join(app_dir, audio_filename)
+        
+        if not os.path.exists(filepath):
+            context['error'] = f"Audio file '{audio_filename}' not found. Please place it next to app.py."
+            return render_template('audio_transcribe.html', **context)
+        
+        # Get the Whisper model
+        model = get_whisper_model()
+        
+        # Transcribe the audio file
+        result = model.transcribe(filepath)
+        
+        # Update context with success data
+        context['has_audio'] = True
+        context['text'] = result["text"]
+        context['filename'] = audio_filename
+        
+        # Reference the file directly from the app directory
+        context['audio_path'] = f"/app-files/{audio_filename}"
+        
+    except Exception as e:
+        logger.error(f"Transcription error: {str(e)}")
+        context['error'] = str(e)
+    
+    # Return the single template with appropriate context
+    return render_template('audio_transcribe.html', **context)
+
+
 @app.route('/static/audio/<filename>')
 def serve_audio(filename):
     return send_from_directory(app.config['AUDIO_FOLDER'], filename)
